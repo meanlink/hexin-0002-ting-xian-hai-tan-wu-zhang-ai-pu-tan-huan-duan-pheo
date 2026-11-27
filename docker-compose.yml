@@ -1,0 +1,93 @@
+name: hexin-sandmat
+x-platform: &platform
+  image: hexin-sandmat-python:local
+  environment:
+    DB_ENGINE: mysql
+    DB_PASSWORD: ${DB_PASSWORD:-hexin-db-demo}
+    REDIS_URL: redis://redis:6379/0
+    APP_NAME: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}
+    SEED_DEMO: ${SEED_DEMO:-true}
+    DEMO_PASSWORD: ${DEMO_PASSWORD:-Demo2026!}
+    JWT_SECRET: ${JWT_SECRET:-hexin-demo-jwt-key-change-before-deployment}
+  volumes:
+    - artifacts:/artifacts
+services:
+  backend:
+    <<: *platform
+    build: ./backend
+    container_name: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}-backend
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-19341}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 2s
+      timeout: 4s
+      retries: 25
+  worker:
+    <<: *platform
+    pull_policy: never
+    command: [python, worker.py]
+    restart: on-failure
+    container_name: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}-worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "from pathlib import Path; from time import time; raise SystemExit(time() - Path('/tmp/hexin-heartbeat').stat().st_mtime > 25)"]
+      interval: 2s
+      timeout: 4s
+      retries: 25
+  frontend:
+    build: ./frontend
+    container_name: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}-frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-18341}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, 'wget -qO /dev/null http://127.0.0.1/']
+      interval: 2s
+      timeout: 4s
+      retries: 25
+  db:
+    container_name: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}-db
+    image: mysql:8.0
+    environment:
+      MYSQL_USER: app
+      MYSQL_PASSWORD: ${DB_PASSWORD:-hexin-db-demo}
+      MYSQL_DATABASE: business
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    ports:
+      - "127.0.0.1:${DB_PORT:-17841}:3306"
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null']
+      interval: 2s
+      timeout: 4s
+      retries: 45
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-hexin-sandmat}-redis
+    command: [redis-server, --appendonly, 'yes']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 4s
+      retries: 25
+volumes:
+  database:
+  redis:
+  artifacts:
