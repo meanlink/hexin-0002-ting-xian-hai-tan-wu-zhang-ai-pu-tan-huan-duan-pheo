@@ -70,9 +70,15 @@
 .sand-table tbody th { color: var(--ink); }
 .sand-table tbody tr:nth-child(even) { background: oklch(94.5% .019 96); }
 .seal { display: inline-block; font-size: .78rem; font-weight: 650; padding: .11em .55em; border: 1px solid currentColor; color: var(--muted); white-space: nowrap; }
-.seal-laid, .seal-clear, .seal-approved, .seal-handed { color: var(--accent); background: oklch(91.5% .047 163); }
+.seal-laid, .seal-clear, .seal-approved, .seal-handed, .seal-revealed { color: var(--accent); background: oklch(91.5% .047 163); }
 .seal-stuck { color: var(--error); background: oklch(93% .045 40); }
+.seal-sealed { color: oklch(40% .09 75); background: oklch(93% .06 85); }
 .seal-none { border-style: dashed; }
+.sand-table tr.false-clear { outline: 2px solid var(--error); outline-offset: -2px; }
+.sand-table tr.false-clear td { color: var(--error); font-weight: 650; }
+#batch-form select[multiple] { min-height: 7.5rem; }
+#blind-record-form .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#blind-record-form .field-grid label:last-child { grid-column: 1 / -1; }
 .trial-id { color: var(--accent); font-weight: 650; margin-block: .8rem .6rem; }
 .trial-id small { color: var(--muted); }
 .trial-meters { display: flex; flex-wrap: wrap; gap: 1rem; padding-block: .75rem; border-block: 1px solid var(--line); }

@@ -1,5 +1,8 @@
 export const names = {
-  state: { laid: "已铺设", standby: "备用", draft: "待签发", approved: "已签发", handed: "已交班" },
+  state: {
+    laid: "已铺设", standby: "备用", draft: "待签发", approved: "已签发", handed: "已交班",
+    sealed: "密封中", revealed: "已揭晓",
+  },
   result: { clear: "可通行", stuck: "受阻" },
   priority: { access: "无障碍", rescue: "救援", both: "共用" },
 };

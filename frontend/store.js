@@ -1,6 +1,11 @@
 import { api } from "/ui.js";
 
-const queryEndpoints = { map: "/segments", trials: "/trials", moves: "/moves" };
+const queryEndpoints = {
+  map: "/segments",
+  trials: "/trials",
+  moves: "/moves",
+  blindBatches: "/blind-batches",
+};
 const state = new Map();
 
 export async function load(...keys) {

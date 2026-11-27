@@ -5,6 +5,7 @@ from .states import TrialResult
 
 SegmentCode = Annotated[str, StringConstraints(pattern=r'^[A-Z][0-9]{1,3}$')]
 TrialCode = Annotated[str, StringConstraints(pattern=r'^[A-Z][A-Z0-9-]{2,23}$')]
+BatchCode = Annotated[str, StringConstraints(pattern=r'^[A-Z][A-Z0-9-]{2,23}$')]
 
 
 class TrialInput(BaseModel):
@@ -13,6 +14,28 @@ class TrialInput(BaseModel):
     moisture_pct: float = Field(ge=0, le=100, allow_inf_nan=False)
     rut_mm: float = Field(ge=0, le=100, allow_inf_nan=False)
     observed_result: TrialResult | None = None
+
+
+class BatchInput(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=120)]
+    trial_codes: list[TrialCode] = Field(min_length=1, max_length=50)
+
+
+class BlindTrialInput(BaseModel):
+    segment_code: SegmentCode
+    slope_pct: float = Field(ge=0, le=20, allow_inf_nan=False)
+    moisture_pct: float = Field(ge=0, le=100, allow_inf_nan=False)
+    rut_mm: float = Field(ge=0, le=100, allow_inf_nan=False)
+    observed_result: TrialResult | None = None
+
+
+class BlindPredictionInput(BaseModel):
+    # 允许末条在同一次请求里同时提交现场判读与预测。
+    observed_result: TrialResult | None = None
+
+
+class BlindAssessment(BaseModel):
+    outcome: TrialResult
 
 
 class OrderInput(BaseModel):

@@ -39,7 +39,21 @@ def classify_job(payload):
                     'clear_probability': float(probe['clear_probability']), 'sample_count': probe['sample_count']}
         if probe['observed_result'] is not None:
             raise ValueError('模型仅推演未登记判读的测验，以便留出现场验证。')
-        rows = db.all('SELECT * FROM roll_trials WHERE observed_result IS NOT NULL ORDER BY code')
+        if probe['blind_batch_code'] is not None:
+            batch = db.one('SELECT status FROM blind_batches WHERE code=%s',
+                           (probe['blind_batch_code'],))
+            if batch is not None and batch['status'] == 'sealed':
+                raise ValueError('密封盲测测验只能由盲测任务按开测快照推演。')
+        # 密封盲测中的判读（含参测毯段以往判读若被纳入批次）不参与日常拟合；
+        # 已揭晓批次的样本则正常回流训练。
+        rows = db.all(
+            '''SELECT * FROM roll_trials
+               WHERE observed_result IS NOT NULL
+                 AND (blind_batch_code IS NULL
+                      OR blind_batch_code IN (
+                          SELECT code FROM blind_batches WHERE status = 'revealed'))
+               ORDER BY code'''
+        )
         result = predict(rows, probe)
         db.execute(
             '''UPDATE roll_trials SET predicted_result=%s, clear_probability=%s, sample_count=%s

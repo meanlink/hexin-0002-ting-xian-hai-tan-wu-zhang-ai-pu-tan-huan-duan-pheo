@@ -20,3 +20,23 @@ export async function runTrial(code) {
   invalidate("trials");
   return result;
 }
+
+export const openBlindBatch = form => change("/blind-batches", form, "blindBatches");
+export const blindBatch = code => api(`/blind-batches/${encodeURIComponent(code)}`);
+export const recordBlindTrial = (code, form) =>
+  change(`/blind-batches/${encodeURIComponent(code)}/trials`, form, "blindBatches");
+export const assessBlindTrial = (code, trialCode, outcome) =>
+  change(`/blind-batches/${encodeURIComponent(code)}/trials/${encodeURIComponent(trialCode)}/assess`,
+    {outcome}, "blindBatches");
+export const revealBlindBatch = code =>
+  change(`/blind-batches/${encodeURIComponent(code)}/reveal`, {}, "blindBatches");
+
+export async function runBlindTrial(code, trialCode, observedResult) {
+  const body = observedResult ? {observed_result: observedResult} : {};
+  const { id } = await change(
+    `/blind-batches/${encodeURIComponent(code)}/trials/${encodeURIComponent(trialCode)}/predict`,
+    body, "blindBatches");
+  const result = await pollJob(id);
+  invalidate("blindBatches");
+  return result;
+}

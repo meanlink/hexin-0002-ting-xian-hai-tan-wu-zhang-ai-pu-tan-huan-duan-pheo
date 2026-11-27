@@ -43,13 +43,26 @@ docker compose exec -T backend python -m scripts.seed_demo
 
 测验用高斯朴素贝叶斯。对可通行、受阻分别拟合坡度、湿度和轮辙的均值及方差，并带入各类的样本先验，使用对数分数归一化求可通行概率。每类至少 4 条现场判读。方差按测量精度设置下限，阈值为 0.8。在相同判读集合和输入下计算可复现。未判读的新测验作为留出输入，预测和现场结果分别存储。签发还要求两者都判为可通行，且广度优先搜索确认救援和公众通路依旧连通。
 
+### 模型盲测批次
+
+班长在「模型盲测」页挑选**尚无预测和判读**的滚轮测验开测，协议保证评估独立于训练：
+
+1. **开测锁定训练样本**：开测瞬间把全部已公开判读冻结成快照（`blind_batches.locked_snapshot`）并记录样本数。参测毯段以往判读若已在库，密封期同样不参与拟合。
+2. **密封提交**：预测走 `sandmat-blind-classify` 队列，仅按开测快照计算，结果写入 `blind_sample_count`；现场判读可先交、也可在推演时一并密封。密封期详情接口只回进度（`has_prediction` / `has_observation`），不回具体判别。
+3. **统一揭晓**：全组预测与现场判读齐备后由班长一次性揭晓，盲测结果只出一份；报告给出把**现场受阻判成可通行**的次数（`false_clear_count`，方向性差错）及判对条数。
+4. **揭晓后才回流**：揭晓前日常推演（`trials.classify_job`）排除所有密封批次的判读；揭晓后这些样本才进入日常训练池。
+5. **中断可恢复**：worker 重启后把处理中的任务移回队列，盲测任务对已出预测幂等返回，重试仍用同一份开测快照，不更换训练样本。
+
+末条测验支持在同一次推演请求里同时提交现场判读与预测，整批仍只产生一份揭晓报告。
+
 | 内容 | 路径 |
 |---|---|
 | Python / FastAPI 路由及 DB 事务 | `backend/domain.py` 和 `backend/infra/` |
-| 分类、通路校核、换段业务与演示班次 | `backend/sandmat/` |
-| MySQL 8 三张关联业务表 | `backend/migrations/10_sandmat.sql` |
+| 分类、盲测批次、通路校核、换段业务与演示班次 | `backend/sandmat/`（盲测见 `blind.py`、`blind_states.py`） |
+| MySQL 8 关联业务表与盲测迁移 | `backend/migrations/10_sandmat.sql`、`20_blind_batch.sql` |
 | Redis 任务与心跳 | `backend/worker.py` 和 `backend/infra/queue.py` |
+| 离线盲测业务测试（标准库 sqlite3，无需容器） | `backend/tests/`，`python3 tests/run_offline.py` |
 | Nginx / 原生 HTML、CSS、ES 模块 | `frontend/` |
-| 四个工作页与共享地图、状态标记 | `frontend/pages/` 和 `frontend/components/` |
+| 五个工作页（含「模型盲测」）与共享地图、状态标记 | `frontend/pages/` 和 `frontend/components/` |
 
 业务枚举在 `backend/sandmat/states.py`、MySQL 约束及 `frontend/constants.js` 定义，供试验、地图和交接页使用。角色枚举位于 `backend/infra/roles.py` 和 `frontend/session.js`。环境变量见 `.env.example`，主要有 `COMPOSE_PROJECT_NAME`、三个端口、`DB_PASSWORD`、`JWT_SECRET` 与 `SEED_DEMO`。容器为 frontend、backend、worker、db、redis，共享产物卷由 Compose 管理。许可为 MIT，详见 `LICENSE`。
